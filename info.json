@@ -1,0 +1,9 @@
+{
+  "name": "minifactory-equipment",
+  "version": "0.1.0",
+  "title": "Minifactory Equipment",
+  "author": "killahkik",
+  "factorio_version": "2.0",
+  "dependencies": [ "base >= 2.0"],
+  "description": "Changes player armor to create its own minifactory from the equipment grid in order to produce beneficial effects."
+}
