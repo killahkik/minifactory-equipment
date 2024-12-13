@@ -5,3 +5,10 @@ data.raw["gui-style"]["default"]["equipment_camera_style"] = {
     minimal_height = 300,
     parent = "camera"
 }
+data.raw["gui-style"]["default"]["equipment_camera_button_style"] = {
+    type = "button_style",
+    parent = "button",
+    width = 160,
+    height = 30,
+    padding = 0,
+}

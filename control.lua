@@ -1,9 +1,14 @@
--- TODO: block adding ghost equipment (check if the added equipment is a ghost and if true AND it's a minifactory piece of equipment, delete the ghost entity and return)
--- check if the equipment type is ghost, if true, return
+-- needed before release:
 -- TODO: return when adding non-minifactory equipment-- check if the equipment name starts with "minifactory" and if false, return
 -- TODO: when taking off armor, if there is no new armor on, remove surface entities-- use checkPlayerGrid to check if the grid is valid, if false, remove surface entitites and return
--- TODO: hide equipment surfaces from remote view, use a button to view them instead
--- TODO: when taking off armor and there is no new armor on, set player's buff values to 0
+-- TODO: when taking off armor and there is no new armor on, set player's buff values to 0 (rest should be taken care of by difference? test)
+
+-- bugs/ minor features:
+-- TODO: block adding ghost equipment (check if the added equipment is a ghost and if true AND it's a minifactory piece of equipment, delete the ghost entity and return)
+-- check if the equipment type is ghost, if true, return
+-- TODO: add settings to increase/decrease buff amounts
+-- TODO: add factoripedia entry for how the minifactory equipment works, what buffs it can give, and what to produce and how much buff they give (say each one lasts 50 seconds)
+-- TODO: add update proofing to GUI, see https://github.com/ClaudeMetz/UntitledGuiGuide/wiki/Chapter-8:-Going-With-the-Times
 
 -- item name to buff name and buff amount
 BuffDict = {
@@ -93,12 +98,13 @@ local function updateGUI(player_index, grid)
     local camY = grid.height / 2
     local camPosition = {camX, camY}
     --game.print("camPosition: " .. camX .. ", " .. camY)
-    -- create frame and cam if there is none
     local root = gui.relative
+    -- camera frame next to armor GUI
     if root.equipment_camera_frame == nil then
         root.add{type = "frame", name = "equipment_camera_frame", direction = "vertical", caption = "Equipment Minifactory", anchor = {gui = defines.relative_gui_type.armor_gui, type = "armor", position = defines.relative_gui_position.right}}
         --game.print("created frame")
     end
+    -- camera in frame
     if root.equipment_camera_frame.equipment_camera == nil then
         root.equipment_camera_frame.add{type = "camera", name = "equipment_camera", position = camPosition, surface_index = game.get_surface("equipment_surface_" .. player_index).index, zoom = camZoom, style = "equipment_camera_style"}
         --game.print("created camera")
@@ -108,7 +114,11 @@ local function updateGUI(player_index, grid)
         --update cam position
         root.equipment_camera_frame.equipment_camera.position = camPosition
     end
-    -- TODO: add button to view player's equipment surface
+    -- button in frame
+    if root.equipment_camera_frame.surface_button == nil then
+        root.equipment_camera_frame.add{type = "button", name = "minifactory_equipment_surface_button", caption = "View/edit minifactory", style = "equipment_camera_button_style"}
+        game.print("created button")
+    end
 end
 
 local function createSurfaceEntities(surface, grid, player)
@@ -195,6 +205,7 @@ local function getTotalEndpointItems(player_index) -- returns table of item name
     local totalItems = {} 
     if storage.playerGrids[player_index].endpointItems == nil then
         --game.print("endpointItems is nil for " .. player_index)
+        storage.playerGrids[player_index].endpointItems = {}
     end
     for _, items in pairs(storage.playerGrids[player_index].endpointItems) do
         for _, item in pairs(items) do
@@ -256,14 +267,16 @@ local function updatePlayerBuffs(player_index) -- update storage with updated bu
     for itemName, itemCount in pairs(totalItems) do
         game.print("item: " .. itemName .. " count: " .. itemCount)
         -- add buffs based on item count
-        if storage.playerBuffs[player_index][itemCount] == nil or storage.playerBuffs[player_index][itemCount] == 0 then
+        if storage.playerBuffs[player_index][getBuffName(itemName)] == nil or storage.playerBuffs[player_index][getBuffName(itemName)] == 0 then
             local buffValue = getBuffValue(itemName, itemCount)
             storage.playerBuffs[player_index][getBuffName(itemName)] = buffValue
+        elseif storage.playerBuffs[player_index][getBuffName(itemName)] > 0 then
+            local buffValue = getBuffValue(itemName, itemCount)
+            storage.playerBuffs[player_index][getBuffName(itemName)] = storage.playerBuffs[player_index][getBuffName(itemName)] + buffValue
         end
     end
 end
 
--- TODO: make function for getting change in player buffs from storage and use that to update player's buffs
 local function getBuffDifference(player_index) -- calculate difference in buffs between last update and now
     local difference = {}
     local buffNames = {}
@@ -277,7 +290,6 @@ local function getBuffDifference(player_index) -- calculate difference in buffs 
         for _, buffName in pairs(buffNames) do
             if buffName == buffKey[1] then
                 exists = true
-                break
             end
         end
         if exists == false then
@@ -294,14 +306,13 @@ local function getBuffDifference(player_index) -- calculate difference in buffs 
         difference[buffName] = storage.playerBuffs[player_index][buffName] - storage.lastPlayerBuffs[player_index][buffName]
         game.print("------- buff differences")
         for buffName, buffValue in pairs(difference) do
-            if buffValue > 0 or buffValue < 0 then
-                game.print("buff difference: " .. buffName .. " " .. buffValue)
-            end
+            game.print("buff difference: " .. buffName .. " " .. buffValue)
         end
     end
+    return difference
 end
 
-local function applyPlayerBuffs(player_index) --TODO: add difference in buffs between last update and now to player's buffs
+local function applyPlayerBuffs(player_index) -- add difference in buffs list to player
     local player = game.get_player(player_index)
     local count = 0
     if player == nil then
@@ -321,6 +332,7 @@ local function applyPlayerBuffs(player_index) --TODO: add difference in buffs be
     local difference = getBuffDifference(player_index)
     for buffName, buffValue in pairs(storage.playerBuffs[player_index]) do
         player[buffName] = player[buffName] + difference[buffName]
+        game.print("player total buff: " .. buffName .. " " .. player[buffName])
     end
 end
 
@@ -510,6 +522,17 @@ local function onTick(event)
     end
 end
 
+local function onGUIClick(event)
+    if event.element.name == "minifactory_equipment_surface_button" then
+        local player = game.get_player(event.player_index)
+        if player == nil then
+            return
+        end
+        player.set_controller{type = defines.controllers.remote, position = {5, 5}, surface = game.get_surface(getOrMakePlayerSurfaceName(player.index))}
+        player.zoom = 0.5
+    end
+end
+
 
 script.on_event(defines.events.on_equipment_inserted, onAddEquipment)
 script.on_event(defines.events.on_equipment_removed, onRemoveEquipment)
@@ -517,4 +540,4 @@ script.on_event(defines.events.on_player_armor_inventory_changed, onChangeArmor)
 
 script.on_event(defines.events.on_tick, onTick)
 
--- TODO: add update proofing to GUI, see https://github.com/ClaudeMetz/UntitledGuiGuide/wiki/Chapter-8:-Going-With-the-Times
+script.on_event(defines.events.on_gui_click, onGUIClick)
