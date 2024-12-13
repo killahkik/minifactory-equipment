@@ -1,14 +1,43 @@
 -- TODO: block adding ghost equipment (check if the added equipment is a ghost and if true AND it's a minifactory piece of equipment, delete the ghost entity and return)
 -- check if the equipment type is ghost, if true, return
 -- TODO: return when adding non-minifactory equipment-- check if the equipment name starts with "minifactory" and if false, return
--- TODO: when taking off armor, if there is no new armor on, remove surface entities-- use checkPlayerGrid to check if the grid is valid, if false, return
--- TODO: hide equipment surfaces from remote view, use a button to view them instead -- luaForce.set_surface_hidden(surface, hidden)
+-- TODO: when taking off armor, if there is no new armor on, remove surface entities-- use checkPlayerGrid to check if the grid is valid, if false, remove surface entitites and return
+-- TODO: hide equipment surfaces from remote view, use a button to view them instead
+-- TODO: when taking off armor and there is no new armor on, set player's buff values to 0
+
+-- item name to buff name and buff amount
+BuffDict = {
+    ["inserter"] = {"character_running_speed_modifier", 0.03},
+    ["long-handed-inserter"] = {"character_running_speed_modifier", 0.04},
+    ["assembling-machine-1"] = {"character_crafting_speed_modifier", 0.1},
+    ["assembling-machine-2"] = {"character_crafting_speed_modifier", 0.2},
+    ["transport-belt"] = {"character_inventory_slots_bonus", 1}
+}
 
 -- returns the surface name for the player's equipment surface, creating it if it doesn't exist
 local function getOrMakePlayerSurfaceName(player_index)
     local surfaceName = "equipment_surface_" .. player_index
     if game.get_surface(surfaceName) == nil then
-        game.create_surface(surfaceName, {width = 200, height = 200, no_enemies_mode = true, default_enable_all_autoplace_controls = false, autoplace_controls = {}})
+        game.create_surface(surfaceName, {
+            width = 200,
+            height = 200,
+            no_enemies_mode = true,
+            default_enable_all_autoplace_controls = false,
+            autoplace_controls = {},
+            autoplace_settings = {},
+            seed = 1,
+            starting_area = "none",
+            starting_points = {},
+            peaceful_mode = true,
+            property_expression_names = {},
+            cliff_settings = {name = "cliff", control = "cliff", cliff_elevation_interval = 0, cliff_elevation_0 = 0, cliff_smoothing = 1, richness = 1},
+            territory_settings = {
+                units = {},
+                territory_index_expression = "",
+                territory_variation_expression = "",
+                minimum_territory_size = 0
+            }
+        })
         game.get_surface(surfaceName).always_day = true
     end
     local surface = game.surfaces[surfaceName]
@@ -124,7 +153,8 @@ local function updateEquipmentSurface(playerIndex)
     player.force.chart_all(surface)
 end
 
-local function updateEquipmentSurfaceEndpoints(player_index) -- TODO: look over this function, make sure its correct
+local function updateEquipmentSurfaceEndpoints(player_index)
+    --game.print("updating endpoint items for player " .. player_index)
     local surface = game.get_surface(getOrMakePlayerSurfaceName(player_index))
     if surface == nil then
         return
@@ -134,7 +164,6 @@ local function updateEquipmentSurfaceEndpoints(player_index) -- TODO: look over 
         return
     end
     local endpointInventory = endpoint[1].get_inventory(defines.inventory.chest)
-    local player = game.get_player(player_index)
     if storage.playerGrids[player_index].endpointItems == nil then
         storage.playerGrids[player_index].endpointItems = {}
     end
@@ -150,7 +179,7 @@ local function updateEquipmentSurfaceEndpoints(player_index) -- TODO: look over 
         endpointInventory.clear()
     else
         table.insert(storage.playerGrids[player_index].endpointItems, {})
-        game.print("added empty table to endpointItems" .. player_index)
+        --game.print("added empty table to endpointItems" .. player_index)
     end
     -- ensure endpointItems table does not exceed 10 elements
     if #storage.playerGrids[player_index].endpointItems > 10 then
@@ -161,12 +190,138 @@ local function updateEquipmentSurfaceEndpoints(player_index) -- TODO: look over 
     end
 end
 
-local function getTotalEndpoint()
-
+local function getTotalEndpointItems(player_index) -- returns table of item name to item count
+    --game.print("getting total endpoint items for player " .. player_index)
+    local totalItems = {} 
+    if storage.playerGrids[player_index].endpointItems == nil then
+        --game.print("endpointItems is nil for " .. player_index)
+    end
+    for _, items in pairs(storage.playerGrids[player_index].endpointItems) do
+        for _, item in pairs(items) do
+            if totalItems[item.name] == nil then
+                totalItems[item.name] = item.count
+            else
+                totalItems[item.name] = totalItems[item.name] + item.count
+            end
+        end
+    end
+    return totalItems
 end
 
-local function updatePlayerBuffs(player_index) -- TODO: implement
+local function getBuffValue(itemName, itemCount)
+    local buff = BuffDict[itemName]
+    if buff == nil then
+        game.print("buff not found for item " .. itemName)
+        return nil
+    else
+        game.print("buff value applied for item " .. itemName .. ": " .. buff[2] * itemCount)
+    end
+    return buff[2] * itemCount
+end
 
+local function getBuffName(itemName)
+    local buff = BuffDict[itemName]
+    if buff == nil then
+        game.print("buff not found for item " .. itemName)
+        return nil
+    else
+        game.print("buff name applied for item " .. itemName .. ": " .. buff[1])
+    end
+    return buff[1]
+end
+
+local function updatePlayerBuffs(player_index) -- update storage with updated buff values
+    game.print("updating player buffs for player " .. player_index)
+    local totalItems = getTotalEndpointItems(player_index)
+    -- ensure storage tables exist
+    if storage.playerBuffs == nil then
+        storage.playerBuffs = {}
+    end
+    if storage.playerBuffs[player_index] == nil then
+        storage.playerBuffs[player_index] = {}
+    end
+    if storage.lastPlayerBuffs == nil then
+        storage.lastPlayerBuffs = {}
+    end
+    -- update lastPlayerBuffs with values
+    storage.lastPlayerBuffs[player_index] = {}
+    for _, buffKey in pairs(BuffDict) do
+        storage.lastPlayerBuffs[player_index][buffKey] = 0
+    end
+    for buff, value in pairs(storage.playerBuffs[player_index]) do
+        storage.lastPlayerBuffs[player_index][buff] = value
+    end
+    -- update buffs with new values
+    storage.playerBuffs[player_index] = {}
+    for itemName, itemCount in pairs(totalItems) do
+        game.print("item: " .. itemName .. " count: " .. itemCount)
+        -- add buffs based on item count
+        if storage.playerBuffs[player_index][itemCount] == nil or storage.playerBuffs[player_index][itemCount] == 0 then
+            local buffValue = getBuffValue(itemName, itemCount)
+            storage.playerBuffs[player_index][getBuffName(itemName)] = buffValue
+        end
+    end
+end
+
+-- TODO: make function for getting change in player buffs from storage and use that to update player's buffs
+local function getBuffDifference(player_index) -- calculate difference in buffs between last update and now
+    local difference = {}
+    local buffNames = {}
+    if storage.lastPlayerBuffs == nil or storage.lastPlayerBuffs == {} then
+        return storage.playerBuffs[player_index]
+    end
+    -- get every buff name
+    for _, buffKey in pairs(BuffDict) do
+        -- dont add duplicates
+        local exists = false
+        for _, buffName in pairs(buffNames) do
+            if buffName == buffKey[1] then
+                exists = true
+                break
+            end
+        end
+        if exists == false then
+            table.insert(buffNames, buffKey[1])
+        end
+    end
+    for _, buffName in pairs(buffNames) do
+        if storage.playerBuffs[player_index][buffName] == nil then
+            storage.playerBuffs[player_index][buffName] = 0
+        end
+        if storage.lastPlayerBuffs[player_index][buffName] == nil then
+            storage.lastPlayerBuffs[player_index][buffName] = 0
+        end
+        difference[buffName] = storage.playerBuffs[player_index][buffName] - storage.lastPlayerBuffs[player_index][buffName]
+        game.print("------- buff differences")
+        for buffName, buffValue in pairs(difference) do
+            if buffValue > 0 or buffValue < 0 then
+                game.print("buff difference: " .. buffName .. " " .. buffValue)
+            end
+        end
+    end
+end
+
+local function applyPlayerBuffs(player_index) --TODO: add difference in buffs between last update and now to player's buffs
+    local player = game.get_player(player_index)
+    local count = 0
+    if player == nil then
+        return
+    end
+    -- check buffs table
+    game.print("buffs count:" .. count)
+    if storage.playerBuffs[player_index] == nil then
+        game.print("buffs is nil")
+        return
+    end
+    if storage.playerBuffs[player_index] == {} then
+        game.print("buffs is empty")
+        return
+    end
+    -- add difference in buffs
+    local difference = getBuffDifference(player_index)
+    for buffName, buffValue in pairs(storage.playerBuffs[player_index]) do
+        player[buffName] = player[buffName] + difference[buffName]
+    end
 end
 
 local function checkPlayerGrid(grid)
@@ -335,7 +490,7 @@ local function onChangeArmor(event)
     end
     --game.print(event.player_index)
     updateEquipmentSurface(playerIndex)
-    clearAndPrepareSurface(game.get_surface(getOrMakePlayerSurfaceName(playerIndex)))
+    clearAndPrepareSurface(surface)
     createSurfaceEntities(surface, grid, player)
     updateGUI(playerIndex, grid)
     savePlayerGrid(grid, playerIndex)
@@ -349,6 +504,8 @@ local function onTick(event)
             if game.get_surface(getOrMakePlayerSurfaceName(player.index)) ~= nil then
                 player.force.chart_all(game.get_surface(getOrMakePlayerSurfaceName(player.index)))
             end
+            updatePlayerBuffs(player.index)
+            applyPlayerBuffs(player.index)
         end
     end
 end
