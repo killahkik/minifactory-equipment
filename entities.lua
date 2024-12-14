@@ -61,25 +61,6 @@ local minifactoryLongInserter = {
 }
 data:extend{minifactoryLongInserter}
 
-local minifactoryAssembler = {
-    name = "minifactory-assembler",
-    type = "inventory-bonus-equipment",
-    inventory_size_bonus = 0,
-    shape = {
-        width = 2,
-        height = 2,
-        type = "full"
-    },
-    categories = {"armor"},
-    sprite = {
-        filename = "__minifactory-equipment__/graphics/icons/assembling-machine-1.png",
-        width = 64,
-        height = 64,
-        priority = "medium"
-    }
-}
-data:extend{minifactoryAssembler}
-
 local minifactoryAssembler2 = {
     name = "minifactory-assembler-2",
     type = "inventory-bonus-equipment",
@@ -98,6 +79,25 @@ local minifactoryAssembler2 = {
     }
 }
 data:extend{minifactoryAssembler2}
+
+local minifactoryEndpoint = {
+    name = "minifactory-endpoint",
+    type = "inventory-bonus-equipment",
+    inventory_size_bonus = 0,
+    shape = {
+        width = 1,
+        height = 1,
+        type = "full"
+    },
+    categories = {"armor"},
+    sprite = {
+        filename = "__minifactory-equipment__/graphics/icons/steel-chest.png",
+        width = 64,
+        height = 64,
+        priority = "medium"
+    }
+}
+data:extend{minifactoryEndpoint}
 
 -- building entities
 local minifactoryBelt = table.deepcopy(data.raw["transport-belt"]["transport-belt"])
@@ -122,20 +122,6 @@ minifactoryLongInserter.energy_source = {
 }
 data:extend{minifactoryLongInserter}
 
-local minifactoryAssembler = table.deepcopy(data.raw["assembling-machine"]["assembling-machine-1"])
-minifactoryAssembler.name = "minifactory-assembler"
-minifactoryAssembler.energy_source = {
-    type = "void",
-    usage_priority = "secondary-input",
-    emissions = 0
-}
-minifactoryAssembler.graphics_set.animation.layers[1].scale = 0.333
-minifactoryAssembler.graphics_set.animation.layers[2].scale = 0.333
-minifactoryAssembler.collision_box = {{-0.8, -0.8}, {0.8, 0.8}}
-minifactoryAssembler.selection_box = {{-1, -1}, {1, 1}}
-minifactoryAssembler.next_upgrade = nil
-data:extend{minifactoryAssembler}
-
 local minifactoryAssembler2 = table.deepcopy(data.raw["assembling-machine"]["assembling-machine-2"])
 minifactoryAssembler2.name = "minifactory-assembler-2"
 minifactoryAssembler2.energy_source = {
@@ -151,3 +137,8 @@ minifactoryAssembler2.fluid_boxes[1].pipe_connections[1].position = {0, -0.5}
 minifactoryAssembler2.fluid_boxes[2].pipe_connections[1].position = {0, -0.5}
 minifactoryAssembler2.next_upgrade = nil
 data:extend{minifactoryAssembler2}
+
+local minifactoryEndpoint = table.deepcopy(data.raw["container"]["steel-chest"])
+minifactoryEndpoint.name = "minifactory-endpoint"
+minifactoryEndpoint.next_upgrade = nil
+data:extend{minifactoryEndpoint}

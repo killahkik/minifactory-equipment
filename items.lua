@@ -1,8 +1,4 @@
-
-
--- TODO: make minifactory equipment items have their own ItemPrototypes? not sure if necessary
 -- TODO: make minifactory equipment items- assemblers, inserters, belts
--- TODO: do pass over recipe ingredients and costs
 
 -- minifactory belt
 
@@ -86,33 +82,6 @@ local recipe = {
 }
 data:extend{recipe}
 
--- minifactory assembler
-local minifactoryAssembler = {
-    type = "item",
-    name = "minifactory-assembler",
-    icon = "__minifactory-equipment__/graphics/icons/assembling-machine-1.png",
-    icon_size = 64,
-    subgroup = "minifactory-equipment",
-    order = "d",
-    place_as_equipment_result = "minifactory-assembler",
-    stack_size = 50
-}
-data:extend{minifactoryAssembler}
-
-local recipe = {
-    type = "recipe",
-    name = "minifactory-assembler",
-    enabled = true,
-    order = "a",
-    ingredients = {
-        {type = "item", name = "iron-plate", amount = 20},
-        {type = "item", name = "electronic-circuit", amount = 30},
-        {type = "item", name = "assembling-machine-1", amount = 5}
-    },
-    results = {{type = "item", name = "minifactory-assembler", amount = 1}}
-}
-data:extend{recipe}
-
 --minifactory assembler 2
 local minifactoryAssembler2 = {
     type = "item",
@@ -140,4 +109,28 @@ local recipe = {
 }
 data:extend{recipe}
 
--- minifactory endpoint (TODO: will be chest with some slots that is checked every 600 ticks for item count, buff to player is scaled based on item count)
+local minifactoryEndpoint = {
+    type = "item",
+    name = "minifactory-endpoint",
+    icon = "__minifactory-equipment__/graphics/icons/steel-chest.png",
+    icon_size = 64,
+    subgroup = "minifactory-equipment",
+    order = "f",
+    place_as_equipment_result = "minifactory-endpoint",
+    stack_size = 50
+}
+data:extend{minifactoryEndpoint}
+
+local recipe = {
+    type = "recipe",
+    name = "minifactory-endpoint",
+    enabled = true,
+    order = "a",
+    ingredients = {
+        {type = "item", name = "steel-plate", amount = 20},
+        {type = "item", name = "advanced-circuit", amount = 30},
+        {type = "item", name = "steel-chest", amount = 5}
+    },
+    results = {{type = "item", name = "minifactory-endpoint", amount = 1}}
+}
+data:extend{recipe}

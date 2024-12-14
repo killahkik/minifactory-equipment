@@ -1,14 +1,17 @@
 -- needed before release:
--- TODO: return when adding non-minifactory equipment-- check if the equipment name starts with "minifactory" and if false, return
+-- TODO: return when adding non-minifactory equipment-- check if the equipment name starts with "minifactory" and if false, return to prevent crash
 -- TODO: when taking off armor, if there is no new armor on, remove surface entities-- use checkPlayerGrid to check if the grid is valid, if false, remove surface entitites and return
 -- TODO: when taking off armor and there is no new armor on, set player's buff values to 0 (rest should be taken care of by difference? test)
+-- TODO: make recipes only available after researching related technology
 
 -- bugs/ minor features:
 -- TODO: block adding ghost equipment (check if the added equipment is a ghost and if true AND it's a minifactory piece of equipment, delete the ghost entity and return)
 -- check if the equipment type is ghost, if true, return
 -- TODO: add settings to increase/decrease buff amounts
--- TODO: add factoripedia entry for how the minifactory equipment works, what buffs it can give, and what to produce and how much buff they give (say each one lasts 50 seconds)
+-- TODO: add factoripedia entry for how the minifactory equipment works, what buffs it can give, and what to produce and how much buff they give (say each one lasts 50 seconds), add that there can only be one endpoint chest,
 -- TODO: add update proofing to GUI, see https://github.com/ClaudeMetz/UntitledGuiGuide/wiki/Chapter-8:-Going-With-the-Times
+-- TODO: do pass over recipe ingredients and costs
+-- TODO: make the mod work with quality (quality equipment --> quality entities placed)
 
 -- item name to buff name and buff amount
 BuffDict = {
@@ -16,7 +19,7 @@ BuffDict = {
     ["long-handed-inserter"] = {"character_running_speed_modifier", 0.04},
     ["assembling-machine-1"] = {"character_crafting_speed_modifier", 0.1},
     ["assembling-machine-2"] = {"character_crafting_speed_modifier", 0.2},
-    ["transport-belt"] = {"character_inventory_slots_bonus", 1}
+    ["steel-chest"] = {"character_inventory_slots_bonus", 5}
 }
 
 -- returns the surface name for the player's equipment surface, creating it if it doesn't exist
@@ -115,7 +118,7 @@ local function updateGUI(player_index, grid)
         root.equipment_camera_frame.equipment_camera.position = camPosition
     end
     -- button in frame
-    if root.equipment_camera_frame.surface_button == nil then
+    if root.equipment_camera_frame.minifactory_equipment_surface_button == nil then
         root.equipment_camera_frame.add{type = "button", name = "minifactory_equipment_surface_button", caption = "View/edit minifactory", style = "equipment_camera_button_style"}
         game.print("created button")
     end
@@ -172,6 +175,13 @@ local function updateEquipmentSurfaceEndpoints(player_index)
     local endpoint = surface.find_entities_filtered{type = "container"}
     if #endpoint == 0 then
         return
+    end
+    if #endpoint > 1 then
+        game.get_player(player_index).print("Only one endpoint chest is allowed in the minifactory")
+        while #endpoint > 1 do
+            endpoint[2].destroy()
+            table.remove(endpoint, 2)
+        end
     end
     local endpointInventory = endpoint[1].get_inventory(defines.inventory.chest)
     if storage.playerGrids[player_index].endpointItems == nil then
