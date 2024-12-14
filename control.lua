@@ -1,9 +1,7 @@
 -- needed before release:
 -- TODO: make recipes only available after researching related technology
--- TODO: add minifactory electric furnace as 2x2
 -- TODO: make the mod work with space age/quality (quality equipment --> quality entities placed)
--- TODO: save direction of deleted entities and add them back in the same direction- use storage.minifactoryInfo[grid.unique_id]?
--- TODO: differentiate icons for minifactory spawners- add the item they spawn in the icon
+-- TODO: save direction of deleted entities and add them back in the same direction- use storage.minifactoryInfo[grid.unique_id][position] = orientation
 -- TODO: try profiling
 
 -- bugfixes/ minor features:
@@ -142,20 +140,12 @@ local function createSurfaceEntities(surface, grid, player)
             --game.print("Entity " .. name .. " does not exist to place on surface " .. surface.name)
         else
             local shape = equipment.shape
-            -- make sure it's placed at top left corner according to shape (since it seems to place at bottom right default)
+            -- make sure it's placed correctly
             if shape.width > 1 then
-                local count = shape.width
-                while count > 1 do
-                    position.x = position.x + 1
-                    count = count - 1
-                end
+                position.x = position.x + 1
             end
             if shape.height > 1 then
-                local count = shape.height
-                while count > 1 do
-                    position.y = position.y + 1
-                    count = count - 1
-                end
+                position.y = position.y + 1
             end
             -- set type to output if its a minifactory spawner
             if string.find(name, "minifactory-spawner", 1, true) then
@@ -569,20 +559,12 @@ local function onAddEquipment(event)
     if #positions > 0 then
         for _, position in pairs(positions) do
             --game.print("adding entity to surface " .. getOrMakePlayerSurfaceName(playerIndex) .. " at position: " .. position.x .. ", " .. position.y)
-            -- make sure it's placed at top left corner according to shape (since it seems to place at bottom right default)
+            -- make sure it's placed correctly
             if shape.width > 1 then
-                local count = shape.width
-                while count > 1 do
-                    position.x = position.x + 1
-                    count = count - 1
-                end
+                position.x = position.x + 1
             end
             if shape.height > 1 then
-                local count = shape.height
-                while count > 1 do
-                    position.y = position.y + 1
-                    count = count - 1
-                end
+                position.y = position.y + 1
             end
             addEntity(position, game.get_surface(getOrMakePlayerSurfaceName(playerIndex)), entity, player)
         end

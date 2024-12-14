@@ -106,7 +106,7 @@ local minifactorySpawnerIron = {
     },
     categories = {"armor"},
     sprite = {
-        filename = "__minifactory-equipment__/graphics/icons/underground-belt.png",
+        filename = "__minifactory-equipment__/graphics/icons/minifactory-spawner-iron.png",
         width = 64,
         height = 64,
         priority = "medium"
@@ -125,13 +125,32 @@ local minifactorySpawnerCopper = {
     },
     categories = {"armor"},
     sprite = {
-        filename = "__minifactory-equipment__/graphics/icons/underground-belt.png",
+        filename = "__minifactory-equipment__/graphics/icons/minifactory-spawner-copper.png",
         width = 64,
         height = 64,
         priority = "medium"
     }
 }
 data:extend{minifactorySpawnerCopper}
+
+local minifactoryElectricFurnace = {
+    name = "minifactory-electric-furnace",
+    type = "inventory-bonus-equipment",
+    inventory_size_bonus = 0,
+    shape = {
+        width = 3,
+        height = 3,
+        type = "full"
+    },
+    categories = {"armor"},
+    sprite = {
+        filename = "__minifactory-equipment__/graphics/icons/electric-furnace.png",
+        width = 64,
+        height = 64,
+        priority = "medium"
+    }
+}
+data:extend{minifactoryElectricFurnace}
 
 -- building entities
 local minifactoryBelt = table.deepcopy(data.raw["transport-belt"]["transport-belt"])
@@ -190,3 +209,14 @@ minifactorySpawnerCopper.minable.result = "minifactory-spawner-copper"
 minifactorySpawnerCopper.max_distance = 0
 minifactorySpawnerCopper.next_upgrade = nil
 data:extend{minifactorySpawnerCopper}
+
+local minifactoryElectricFurnace = table.deepcopy(data.raw["furnace"]["electric-furnace"])
+minifactoryElectricFurnace.name = "minifactory-electric-furnace"
+minifactoryElectricFurnace.energy_source = {
+    type = "void",
+    usage_priority = "secondary-input",
+    emissions = 0
+}
+minifactoryElectricFurnace.crafting_speed = 5.333
+minifactoryElectricFurnace.next_upgrade = nil
+data:extend{minifactoryElectricFurnace}

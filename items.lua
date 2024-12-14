@@ -137,7 +137,7 @@ data:extend{recipe}
 local minifactorySpawnerIron = {
     type = "item",
     name = "minifactory-spawner-iron",
-    icon = "__minifactory-equipment__/graphics/icons/underground-belt.png",
+    icon = "__minifactory-equipment__/graphics/icons/minifactory-spawner-iron.png",
     icon_size = 64,
     subgroup = "minifactory-equipment",
     order = "g",
@@ -164,7 +164,7 @@ data:extend{recipe}
 local minifactorySpawnerCopper = {
     type = "item",
     name = "minifactory-spawner-copper",
-    icon = "__minifactory-equipment__/graphics/icons/underground-belt.png",
+    icon = "__minifactory-equipment__/graphics/icons/minifactory-spawner-copper.png",
     icon_size = 64,
     subgroup = "minifactory-equipment",
     order = "h",
@@ -184,5 +184,32 @@ local recipe = {
         {type = "item", name = "underground-belt", amount = 10}
     },
     results = {{type = "item", name = "minifactory-spawner-copper", amount = 1}}
+}
+data:extend{recipe}
+
+-- minifactory electric furnace
+local minifactoryElectricFurnace = {
+    type = "item",
+    name = "minifactory-electric-furnace",
+    icon = "__minifactory-equipment__/graphics/icons/electric-furnace.png",
+    icon_size = 64,
+    subgroup = "minifactory-equipment",
+    order = "i",
+    place_as_equipment_result = "minifactory-electric-furnace",
+    stack_size = 50
+}
+data:extend{minifactoryElectricFurnace}
+
+local recipe = {
+    type = "recipe",
+    name = "minifactory-electric-furnace",
+    enabled = true,
+    order = "a",
+    ingredients = {
+        {type = "item", name = "steel-plate", amount = 20},
+        {type = "item", name = "advanced-circuit", amount = 10},
+        {type = "item", name = "electric-furnace", amount = 3}
+    },
+    results = {{type = "item", name = "minifactory-electric-furnace", amount = 1}}
 }
 data:extend{recipe}
