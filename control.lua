@@ -1,20 +1,23 @@
 -- needed before release:
--- TODO: return when adding non-minifactory equipment-- check if the equipment name starts with "minifactory" and if false, return to prevent crash
--- TODO: when taking off armor, if there is no new armor on, remove surface entities-- use checkPlayerGrid to check if the grid is valid, if false, remove surface entitites and return
--- TODO: when taking off armor and there is no new armor on, set player's buff values to 0 (rest should be taken care of by difference? test)
 -- TODO: make recipes only available after researching related technology
+-- TODO: add minifactory electric furnace as 2x2
+-- TODO: make the mod work with space age/quality (quality equipment --> quality entities placed)
+-- TODO: save direction of deleted entities and add them back in the same direction- use storage.minifactoryInfo[grid.unique_id]?
+-- TODO: differentiate icons for minifactory spawners- add the item they spawn in the icon
+-- TODO: try profiling
 
--- bugs/ minor features:
+-- bugfixes/ minor features:
 -- TODO: block adding ghost equipment (check if the added equipment is a ghost and if true AND it's a minifactory piece of equipment, delete the ghost entity and return)
 -- check if the equipment type is ghost, if true, return
 -- TODO: add settings to increase/decrease buff amounts
 -- TODO: add factoripedia entry for how the minifactory equipment works, what buffs it can give, and what to produce and how much buff they give (say each one lasts 50 seconds), add that there can only be one endpoint chest,
 -- TODO: add update proofing to GUI, see https://github.com/ClaudeMetz/UntitledGuiGuide/wiki/Chapter-8:-Going-With-the-Times
 -- TODO: do pass over recipe ingredients and costs
--- TODO: make the mod work with quality (quality equipment --> quality entities placed)
+
 
 -- item name to buff name and buff amount
 BuffDict = {
+    ["transport-belt"] = {"character_running_speed_modifier", 0.005},
     ["inserter"] = {"character_running_speed_modifier", 0.03},
     ["long-handed-inserter"] = {"character_running_speed_modifier", 0.04},
     ["assembling-machine-1"] = {"character_crafting_speed_modifier", 0.1},
@@ -40,7 +43,7 @@ local function getOrMakePlayerSurfaceName(player_index)
             property_expression_names = {},
             cliff_settings = {name = "cliff", control = "cliff", cliff_elevation_interval = 0, cliff_elevation_0 = 0, cliff_smoothing = 1, richness = 1},
             territory_settings = {
-                units = {},
+                units = {""},
                 territory_index_expression = "",
                 territory_variation_expression = "",
                 minimum_territory_size = 0
@@ -81,6 +84,11 @@ local function deleteEntity(position, surface)
 end
 
 local function addEntity(position, surface, entity, player)
+    -- set type to output if its a minifactory spawner
+    if string.find(entity, "minifactory-spawner", 1, true) then
+        surface.create_entity{name = entity, position = position, force = player.force, type = "output", direction = defines.direction.south}
+        return
+    end
     surface.create_entity{name = entity, position = position, force = player.force}
 end
 
@@ -120,7 +128,7 @@ local function updateGUI(player_index, grid)
     -- button in frame
     if root.equipment_camera_frame.minifactory_equipment_surface_button == nil then
         root.equipment_camera_frame.add{type = "button", name = "minifactory_equipment_surface_button", caption = "View/edit minifactory", style = "equipment_camera_button_style"}
-        game.print("created button")
+        --game.print("created button")
     end
 end
 
@@ -133,12 +141,36 @@ local function createSurfaceEntities(surface, grid, player)
         if #(entityPrototypes) == 0 then
             --game.print("Entity " .. name .. " does not exist to place on surface " .. surface.name)
         else
-            surface.create_entity{name = name, position = position, force = player.force}
+            local shape = equipment.shape
+            -- make sure it's placed at top left corner according to shape (since it seems to place at bottom right default)
+            if shape.width > 1 then
+                local count = shape.width
+                while count > 1 do
+                    position.x = position.x + 1
+                    count = count - 1
+                end
+            end
+            if shape.height > 1 then
+                local count = shape.height
+                while count > 1 do
+                    position.y = position.y + 1
+                    count = count - 1
+                end
+            end
+            -- set type to output if its a minifactory spawner
+            if string.find(name, "minifactory-spawner", 1, true) then
+                surface.create_entity{name = name, position = {position.x, position.y}, force = player.force, type = "output", direction = defines.direction.south}
+            else
+                surface.create_entity{name = name, position = {position.x, position.y}, force = player.force}
+            end
         end
     end
 end
 
 local function getArmorGrid(player)
+    if player.character == nil then
+        return nil
+    end
     local armor = player.character.get_inventory(defines.inventory.character_armor)[1]
     -- check slot isnt empty
     if armor.is_armor == false then
@@ -213,6 +245,9 @@ end
 local function getTotalEndpointItems(player_index) -- returns table of item name to item count
     --game.print("getting total endpoint items for player " .. player_index)
     local totalItems = {} 
+    if storage.playerGrids == nil then
+        return
+    end
     if storage.playerGrids[player_index].endpointItems == nil then
         --game.print("endpointItems is nil for " .. player_index)
         storage.playerGrids[player_index].endpointItems = {}
@@ -232,10 +267,10 @@ end
 local function getBuffValue(itemName, itemCount)
     local buff = BuffDict[itemName]
     if buff == nil then
-        game.print("buff not found for item " .. itemName)
+        --game.print("buff not found for item " .. itemName)
         return nil
     else
-        game.print("buff value applied for item " .. itemName .. ": " .. buff[2] * itemCount)
+        --game.print("buff value applied for item " .. itemName .. ": " .. buff[2] * itemCount)
     end
     return buff[2] * itemCount
 end
@@ -243,16 +278,16 @@ end
 local function getBuffName(itemName)
     local buff = BuffDict[itemName]
     if buff == nil then
-        game.print("buff not found for item " .. itemName)
+        --game.print("buff not found for item " .. itemName)
         return nil
     else
-        game.print("buff name applied for item " .. itemName .. ": " .. buff[1])
+        --game.print("buff name applied for item " .. itemName .. ": " .. buff[1])
     end
     return buff[1]
 end
 
 local function updatePlayerBuffs(player_index) -- update storage with updated buff values
-    game.print("updating player buffs for player " .. player_index)
+    --game.print("updating player buffs for player " .. player_index)
     local totalItems = getTotalEndpointItems(player_index)
     -- ensure storage tables exist
     if storage.playerBuffs == nil then
@@ -274,11 +309,17 @@ local function updatePlayerBuffs(player_index) -- update storage with updated bu
     end
     -- update buffs with new values
     storage.playerBuffs[player_index] = {}
+    if totalItems == nil then
+        return
+    end
     for itemName, itemCount in pairs(totalItems) do
-        game.print("item: " .. itemName .. " count: " .. itemCount)
+        --game.print("item: " .. itemName .. " count: " .. itemCount)
         -- add buffs based on item count
         if storage.playerBuffs[player_index][getBuffName(itemName)] == nil or storage.playerBuffs[player_index][getBuffName(itemName)] == 0 then
             local buffValue = getBuffValue(itemName, itemCount)
+            if buffValue == nil then
+                return
+            end
             storage.playerBuffs[player_index][getBuffName(itemName)] = buffValue
         elseif storage.playerBuffs[player_index][getBuffName(itemName)] > 0 then
             local buffValue = getBuffValue(itemName, itemCount)
@@ -314,9 +355,9 @@ local function getBuffDifference(player_index) -- calculate difference in buffs 
             storage.lastPlayerBuffs[player_index][buffName] = 0
         end
         difference[buffName] = storage.playerBuffs[player_index][buffName] - storage.lastPlayerBuffs[player_index][buffName]
-        game.print("------- buff differences")
+        --game.print("------- buff differences")
         for buffName, buffValue in pairs(difference) do
-            game.print("buff difference: " .. buffName .. " " .. buffValue)
+            --game.print("buff difference: " .. buffName .. " " .. buffValue)
         end
     end
     return difference
@@ -329,21 +370,37 @@ local function applyPlayerBuffs(player_index) -- add difference in buffs list to
         return
     end
     -- check buffs table
-    game.print("buffs count:" .. count)
+    --game.print("buffs count:" .. count)
     if storage.playerBuffs[player_index] == nil then
-        game.print("buffs is nil")
+        --game.print("buffs is nil")
         return
     end
     if storage.playerBuffs[player_index] == {} then
-        game.print("buffs is empty")
+        --game.print("buffs is empty")
+        return
+    end
+    if player.character == nil then
         return
     end
     -- add difference in buffs
     local difference = getBuffDifference(player_index)
     for buffName, buffValue in pairs(storage.playerBuffs[player_index]) do
         player[buffName] = player[buffName] + difference[buffName]
-        game.print("player total buff: " .. buffName .. " " .. player[buffName])
+        --game.print("player total buff: " .. buffName .. " " .. player[buffName])
     end
+end
+
+local function clearPlayerBuffs(player_index)
+    --game.print("clearing stored buffs for player " .. player_index)
+    local player = game.get_player(player_index)
+    if player == nil then
+        return
+    end
+    for buffName, buffValue in pairs(BuffDict) do
+        storage.playerBuffs[player_index][buffValue[1]] = 0
+    end
+    storage.playerGrids[player_index].endpointItems = {}
+    applyPlayerBuffs(player_index)
 end
 
 local function checkPlayerGrid(grid)
@@ -438,12 +495,68 @@ local function getPositionsOfAddedEquipment(grid, lastGrid)
     return positions
 end
 
+local function fillSpawners()
+    for _, player in pairs(game.players) do
+        local grid = getArmorGrid(player)
+        if grid == nil then
+            return
+        end
+        local surface = game.get_surface(getOrMakePlayerSurfaceName(player.index))
+        if surface == nil then
+            return
+        end
+        local spawners = surface.find_entities_filtered{type = "underground-belt"}
+        if #spawners == 0 then
+            --game.print("no spawners found")
+            return
+        end
+        local foundSpawners = {}
+        for _, spawner in pairs(spawners) do
+            -- ensure its a minifactory spawner
+            if string.find(spawner.name, "minifactory-spawner", 1, true) then
+                --game.print("filling confirmed spawner " .. spawner.name)
+                -- ensure only one of each kind of spawner is filled
+                local found = false
+                for foundSpawner, _ in pairs(foundSpawners) do
+                    if spawner.name == foundSpawner then
+                        found = true
+                        player.print("Only one of each kind of spawner is allowed in the minifactory")
+                        break
+                    end
+                end
+                if found == false then
+                    foundSpawners[spawner.name] = true
+                    local item = ""
+                    if spawner.name == "minifactory-spawner-iron" then
+                        item = "iron-plate"
+                    end
+                    if spawner.name == "minifactory-spawner-copper" then
+                        item = "copper-plate"
+                    end
+                    line1 = spawner.get_transport_line(1)
+                    line2 = spawner.get_transport_line(2)
+                    if line1.can_insert_at_back() then
+                        line1.insert_at_back{name = item, count = 4}
+                    end
+                    if line2.can_insert_at_back() then
+                        line2.insert_at_back{name = item, count = 4}
+                    end
+                end
+            end
+        end
+    end
+end
+
 local function onAddEquipment(event)
     --game.print("adding equipment")
     local grid = event.grid
     local entity = event.equipment.name
     local shape = event.equipment.shape
     if checkPlayerGrid(grid) == false then
+        return
+    end
+    if not string.find(entity, "minifactory", 1, true) then
+        --game.print("not minifactory equipment")
         return
     end
     local playerIndex = event.grid.player_owner.index
@@ -478,8 +591,6 @@ local function onAddEquipment(event)
     end
 end
 
-
-
 local function onRemoveEquipment(event)
     --game.print("removing equipment")
     local grid = event.grid
@@ -507,7 +618,10 @@ local function onChangeArmor(event)
     local player = game.get_player(playerIndex)
     local grid = getArmorGrid(player)
     local surface = game.get_surface(getOrMakePlayerSurfaceName(playerIndex))
+    -- there is no new armor grid
     if grid == nil then
+        clearAndPrepareSurface(surface)
+        clearPlayerBuffs(playerIndex)
         return
     end
     --game.print(event.player_index)
@@ -520,6 +634,7 @@ end
 
 local function onTick(event)
     local endpointsSeconds = 5
+    local spawnersSeconds = 0.05
     if event.tick % (60 * endpointsSeconds) == 0 then
         for _, player in pairs(game.players) do
             updateEquipmentSurfaceEndpoints(player.index)
@@ -529,6 +644,9 @@ local function onTick(event)
             updatePlayerBuffs(player.index)
             applyPlayerBuffs(player.index)
         end
+    end
+    if event.tick % (60 * spawnersSeconds) == 0 then
+        fillSpawners()
     end
 end
 

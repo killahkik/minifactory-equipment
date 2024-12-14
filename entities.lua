@@ -1,8 +1,4 @@
--- TODO: make minifactory buildings- void powered assemblers, inserters for use in minifactory
--- TODO: look up how to have an underground make infinite items come out
 
--- TODO: make minifactory equipment entities- assemblers, inserters, belts
--- TODO: add locales for everything
 -- equipment entities
 local minifactoryBelt = {
     name = "minifactory-belt",
@@ -34,7 +30,7 @@ local minifactoryInserter = {
     },
     categories = {"armor"},
     sprite = {
-        filename = "__minifactory-equipment__/graphics/icons/inserter.png",
+        filename = "__minifactory-equipment__/graphics/icons/fast-inserter.png",
         width = 64,
         height = 64,
         priority = "medium"
@@ -99,12 +95,50 @@ local minifactoryEndpoint = {
 }
 data:extend{minifactoryEndpoint}
 
+local minifactorySpawnerIron = {
+    name = "minifactory-spawner-iron",
+    type = "inventory-bonus-equipment",
+    inventory_size_bonus = 0,
+    shape = {
+        width = 1,
+        height = 1,
+        type = "full"
+    },
+    categories = {"armor"},
+    sprite = {
+        filename = "__minifactory-equipment__/graphics/icons/underground-belt.png",
+        width = 64,
+        height = 64,
+        priority = "medium"
+    }
+}
+data:extend{minifactorySpawnerIron}
+
+local minifactorySpawnerCopper = {
+    name = "minifactory-spawner-copper",
+    type = "inventory-bonus-equipment",
+    inventory_size_bonus = 0,
+    shape = {
+        width = 1,
+        height = 1,
+        type = "full"
+    },
+    categories = {"armor"},
+    sprite = {
+        filename = "__minifactory-equipment__/graphics/icons/underground-belt.png",
+        width = 64,
+        height = 64,
+        priority = "medium"
+    }
+}
+data:extend{minifactorySpawnerCopper}
+
 -- building entities
 local minifactoryBelt = table.deepcopy(data.raw["transport-belt"]["transport-belt"])
 minifactoryBelt.name = "minifactory-belt"
 data:extend{minifactoryBelt}
 
-local minifactoryInserter = table.deepcopy(data.raw["inserter"]["inserter"])
+local minifactoryInserter = table.deepcopy(data.raw["inserter"]["fast-inserter"])
 minifactoryInserter.name = "minifactory-inserter"
 minifactoryInserter.energy_source = {
     type = "void",
@@ -142,3 +176,17 @@ local minifactoryEndpoint = table.deepcopy(data.raw["container"]["steel-chest"])
 minifactoryEndpoint.name = "minifactory-endpoint"
 minifactoryEndpoint.next_upgrade = nil
 data:extend{minifactoryEndpoint}
+
+local minifactorySpawnerIron = table.deepcopy(data.raw["underground-belt"]["underground-belt"])
+minifactorySpawnerIron.name = "minifactory-spawner-iron"
+minifactorySpawnerIron.minable.result = "minifactory-spawner-iron"
+minifactorySpawnerIron.max_distance = 0
+minifactorySpawnerIron.next_upgrade = nil
+data:extend{minifactorySpawnerIron}
+
+local minifactorySpawnerCopper = table.deepcopy(data.raw["underground-belt"]["underground-belt"])
+minifactorySpawnerCopper.name = "minifactory-spawner-copper"
+minifactorySpawnerCopper.minable.result = "minifactory-spawner-copper"
+minifactorySpawnerCopper.max_distance = 0
+minifactorySpawnerCopper.next_upgrade = nil
+data:extend{minifactorySpawnerCopper}
