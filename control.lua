@@ -1,16 +1,17 @@
 -- needed before release:
 -- TODO: make recipes only available after researching related technology
--- TODO: make the mod work with space age/quality (quality equipment --> quality entities placed)
--- TODO: save direction of deleted entities and add them back in the same direction- use storage.minifactoryInfo[grid.unique_id][position] = orientation
+-- TODO: save recipes and filters on splitters - use storage.minifactoryInfo
 -- TODO: try profiling
 
 -- bugfixes/ minor features:
 -- TODO: block adding ghost equipment (check if the added equipment is a ghost and if true AND it's a minifactory piece of equipment, delete the ghost entity and return)
 -- check if the equipment type is ghost, if true, return
--- TODO: add settings to increase/decrease buff amounts
+-- TODO: add settings to change buffs given by items, how long they last, and buff strength
 -- TODO: add factoripedia entry for how the minifactory equipment works, what buffs it can give, and what to produce and how much buff they give (say each one lasts 50 seconds), add that there can only be one endpoint chest,
 -- TODO: add update proofing to GUI, see https://github.com/ClaudeMetz/UntitledGuiGuide/wiki/Chapter-8:-Going-With-the-Times
 -- TODO: do pass over recipe ingredients and costs
+-- TODO: make the mod work with space age/quality (quality equipment --> quality entities placed)
+-- TODO: maybe make inventory slots bonus be the max of last 10 times buffs were updated in order to keep it from flickering the gui every 5s
 
 
 -- item name to buff name and buff amount
@@ -60,15 +61,33 @@ local function printEquipmentGridContents(grid)
     end
 end
 
-local function removeSurfaceEntitites(surface)
+local function removeSurfaceEntitites(surface, gridUID)
+    local gridUIDSaved = true
+    if gridUID == nil then
+        gridUIDSaved = false
+        -- game.print("gridUID is nil and was not saved, will not save entity directions")
+    end
+    if storage.minifactoryInfo == nil then
+        storage.minifactoryInfo = {}
+    end
+    if storage.minifactoryInfo[gridUID] == nil and gridUIDSaved then
+        -- game.print("gridUID " .. gridUID .. " not found in storage, resetting entity directions")
+        storage.minifactoryInfo[gridUID] = {}
+    end
     for _, entity in pairs(surface.find_entities()) do
+        if gridUIDSaved then
+            if storage.minifactoryInfo[gridUID][entity.position.x] == nil then
+                storage.minifactoryInfo[gridUID][entity.position.x] = {}
+            end
+            storage.minifactoryInfo[gridUID][entity.position.x][entity.position.y] = entity.direction
+        end
         entity.destroy()
     end
 end
 
-local function clearAndPrepareSurface(surface)
+local function clearAndPrepareSurface(surface, gridUID)
     -- clear surface
-    removeSurfaceEntitites(surface)
+    removeSurfaceEntitites(surface, gridUID)
     -- generate surface chunks
     surface.request_to_generate_chunks({0, 0}, 5)
 end
@@ -134,6 +153,13 @@ local function createSurfaceEntities(surface, grid, player)
     for _, equipment in pairs(grid.equipment) do
         local position = equipment.position
         local name = equipment.name
+        local savedDirection = true
+        if storage.minifactoryInfo == nil then
+            savedDirection = false
+        end
+        if storage.minifactoryInfo[grid.unique_id] == nil then
+            savedDirection = false
+        end
         -- if entity with name doesnt exist, skip
         local entityPrototypes = prototypes.get_entity_filtered{{filter = "name", name = name}}
         if #(entityPrototypes) == 0 then
@@ -151,7 +177,28 @@ local function createSurfaceEntities(surface, grid, player)
             if string.find(name, "minifactory-spawner", 1, true) then
                 surface.create_entity{name = name, position = {position.x, position.y}, force = player.force, type = "output", direction = defines.direction.south}
             else
-                surface.create_entity{name = name, position = {position.x, position.y}, force = player.force}
+                -- set orientation if saved
+                if savedDirection == true then
+                    local infoPosition = {}
+                    infoPosition.x = position.x
+                    infoPosition.y = position.y
+                    if shape.width == 1 and shape.height == 1 then
+                        infoPosition.x = position.x + 0.5
+                        infoPosition.y = position.y + 0.5
+                    end
+                    if shape.width == 2 and shape.height == 2 then
+                        infoPosition.x = position.x + 0
+                        infoPosition.y = position.y + 0
+                    end
+                    if shape.width == 3 and shape.height == 3 then
+                        infoPosition.x = position.x + 0.5
+                        infoPosition.y = position.y + 0.5
+                    end
+                    game.print("orientation: " .. storage.minifactoryInfo[grid.unique_id][infoPosition.x][infoPosition.y])
+                    surface.create_entity{name = name, position = {position.x, position.y}, force = player.force, direction = storage.minifactoryInfo[grid.unique_id][infoPosition.x][infoPosition.y]}
+                else
+                    surface.create_entity{name = name, position = {position.x, position.y}, force = player.force}
+                end
             end
         end
     end
@@ -375,6 +422,11 @@ local function applyPlayerBuffs(player_index) -- add difference in buffs list to
     -- add difference in buffs
     local difference = getBuffDifference(player_index)
     for buffName, buffValue in pairs(storage.playerBuffs[player_index]) do
+        if buffName == "character_inventory_slots_bonus" then
+            if player[buffName] + difference[buffName] < 0 then
+                difference[buffName] = player[buffName] * -1
+            end
+        end
         player[buffName] = player[buffName] + difference[buffName]
         --game.print("player total buff: " .. buffName .. " " .. player[buffName])
     end
@@ -428,6 +480,7 @@ local function savePlayerGrid(grid, playerIndex)
         local equipmentCopy = {position = position, name = name}
         table.insert(storage.playerGrids[playerIndex].equipment, equipmentCopy)
     end
+    storage.playerGrids[playerIndex].unique_id = grid.unique_id
     --game.print("saved grid at storage.playerGrids[" .. playerIndex .. "], new count: " .. #storage.playerGrids[playerIndex].equipment)
     printEquipmentGridContents(grid)
 end
@@ -551,6 +604,14 @@ local function onAddEquipment(event)
     end
     local playerIndex = event.grid.player_owner.index
     local player = game.get_player(playerIndex)
+    -- ensure its armor currently worn
+    if player == nil or player.character == nil then
+        return
+    end
+    if player.character.grid.unique_id ~= grid.unique_id then
+        player.print("Changing minifactory equipment in armor you are not wearing may laed to bugs or crashes")
+        return
+    end
     local lastGrid = storage.playerGrids[playerIndex]
     local positions = getPositionsOfAddedEquipment(grid, lastGrid)
     savePlayerGrid(grid, playerIndex)
@@ -582,6 +643,13 @@ local function onRemoveEquipment(event)
     end
     local playerIndex = event.grid.player_owner.index
     local player = game.get_player(playerIndex)
+    if player == nil or player.character == nil then
+        return
+    end
+    if player.character.grid.unique_id ~= grid.unique_id then
+        player.print("Changing minifactory equipment in armor you are not wearing may laed to bugs or crashes")
+        return
+    end
     local lastGrid = storage.playerGrids[playerIndex]
     local positions = getPositionsOfRemovedEquipment(grid, lastGrid)
     savePlayerGrid(grid, playerIndex)
@@ -602,13 +670,18 @@ local function onChangeArmor(event)
     local surface = game.get_surface(getOrMakePlayerSurfaceName(playerIndex))
     -- there is no new armor grid
     if grid == nil then
-        clearAndPrepareSurface(surface)
+        local lastGridUID = storage.playerGrids[playerIndex].unique_id
+        clearAndPrepareSurface(surface, lastGridUID)
         clearPlayerBuffs(playerIndex)
         return
     end
     --game.print(event.player_index)
     updateEquipmentSurface(playerIndex)
-    clearAndPrepareSurface(surface)
+    if storage.playerGrids == nil then
+        clearAndPrepareSurface(surface, grid.unique_id)
+    else
+        clearAndPrepareSurface(surface, storage.playerGrids[playerIndex].unique_id)
+    end
     createSurfaceEntities(surface, grid, player)
     updateGUI(playerIndex, grid)
     savePlayerGrid(grid, playerIndex)

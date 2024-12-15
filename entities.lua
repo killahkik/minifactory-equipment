@@ -189,6 +189,9 @@ minifactoryAssembler2.selection_box = {{-1, -1}, {1, 1}}
 minifactoryAssembler2.fluid_boxes[1].pipe_connections[1].position = {0, -0.5}
 minifactoryAssembler2.fluid_boxes[2].pipe_connections[1].position = {0, -0.5}
 minifactoryAssembler2.next_upgrade = nil
+if (mods or script.active_mods)["space-age"] then
+    table.insert(minifactoryAssembler2.crafting_categories, "pressing")
+end
 data:extend{minifactoryAssembler2}
 
 local minifactoryEndpoint = table.deepcopy(data.raw["container"]["steel-chest"])
