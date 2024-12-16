@@ -1,17 +1,16 @@
 -- needed before release:
 -- TODO: make recipes only available after researching related technology
--- TODO: save recipes and filters on splitters - use storage.minifactoryInfo
 -- TODO: try profiling
 
 -- bugfixes/ minor features:
--- TODO: block adding ghost equipment (check if the added equipment is a ghost and if true AND it's a minifactory piece of equipment, delete the ghost entity and return)
--- check if the equipment type is ghost, if true, return
 -- TODO: add settings to change buffs given by items, how long they last, and buff strength
 -- TODO: add factoripedia entry for how the minifactory equipment works, what buffs it can give, and what to produce and how much buff they give (say each one lasts 50 seconds), add that there can only be one endpoint chest,
 -- TODO: add update proofing to GUI, see https://github.com/ClaudeMetz/UntitledGuiGuide/wiki/Chapter-8:-Going-With-the-Times
 -- TODO: do pass over recipe ingredients and costs
+-- TODO: do pass over buff dict add more complex, and wider variety of, items
 -- TODO: make the mod work with space age/quality (quality equipment --> quality entities placed)
 -- TODO: maybe make inventory slots bonus be the max of last 10 times buffs were updated in order to keep it from flickering the gui every 5s
+-- TODO: make the buff items their own items as the end products of the minifactory
 
 
 -- item name to buff name and buff amount
@@ -79,7 +78,26 @@ local function removeSurfaceEntitites(surface, gridUID)
             if storage.minifactoryInfo[gridUID][entity.position.x] == nil then
                 storage.minifactoryInfo[gridUID][entity.position.x] = {}
             end
-            storage.minifactoryInfo[gridUID][entity.position.x][entity.position.y] = entity.direction
+            if storage.minifactoryInfo[gridUID][entity.position.x][entity.position.y] == nil then
+                storage.minifactoryInfo[gridUID][entity.position.x][entity.position.y] = {}
+            end
+            storage.minifactoryInfo[gridUID][entity.position.x][entity.position.y].direction = entity.direction
+            -- if entity is assembler, save recipe
+            if string.find(entity.name, "assembler", 1, true) then
+                storage.minifactoryInfo[gridUID][entity.position.x][entity.position.y].recipe = entity.get_recipe()
+            end
+            -- if entity is inserter, save filter, filter mode, if filter enabled, stack size
+            if string.find(entity.name, "inserter", 1, true) then
+                local filters = {}
+                for i = 1, entity.filter_slot_count do
+                    filters[i] = entity.get_filter(i)
+                end
+                storage.minifactoryInfo[gridUID][entity.position.x][entity.position.y].filter = filters
+                storage.minifactoryInfo[gridUID][entity.position.x][entity.position.y].inserter_filter_mode = entity.inserter_filter_mode
+                storage.minifactoryInfo[gridUID][entity.position.x][entity.position.y].use_filters = entity.use_filters
+                storage.minifactoryInfo[gridUID][entity.position.x][entity.position.y].inserter_stack_size_override = entity.inserter_stack_size_override
+            end
+
         end
         entity.destroy()
     end
@@ -153,12 +171,12 @@ local function createSurfaceEntities(surface, grid, player)
     for _, equipment in pairs(grid.equipment) do
         local position = equipment.position
         local name = equipment.name
-        local savedDirection = true
+        local savedMinifactoryInfo = true
         if storage.minifactoryInfo == nil then
-            savedDirection = false
+            savedMinifactoryInfo = false
         end
         if storage.minifactoryInfo[grid.unique_id] == nil then
-            savedDirection = false
+            savedMinifactoryInfo = false
         end
         -- if entity with name doesnt exist, skip
         local entityPrototypes = prototypes.get_entity_filtered{{filter = "name", name = name}}
@@ -178,7 +196,7 @@ local function createSurfaceEntities(surface, grid, player)
                 surface.create_entity{name = name, position = {position.x, position.y}, force = player.force, type = "output", direction = defines.direction.south}
             else
                 -- set orientation if saved
-                if savedDirection == true then
+                if savedMinifactoryInfo == true then
                     local infoPosition = {}
                     infoPosition.x = position.x
                     infoPosition.y = position.y
@@ -194,8 +212,21 @@ local function createSurfaceEntities(surface, grid, player)
                         infoPosition.x = position.x + 0.5
                         infoPosition.y = position.y + 0.5
                     end
-                    game.print("orientation: " .. storage.minifactoryInfo[grid.unique_id][infoPosition.x][infoPosition.y])
-                    surface.create_entity{name = name, position = {position.x, position.y}, force = player.force, direction = storage.minifactoryInfo[grid.unique_id][infoPosition.x][infoPosition.y]}
+                    --game.print("orientation: " .. storage.minifactoryInfo[grid.unique_id][infoPosition.x][infoPosition.y].direction)
+                    local entity = surface.create_entity{name = name, position = {position.x, position.y}, force = player.force, direction = storage.minifactoryInfo[grid.unique_id][infoPosition.x][infoPosition.y].direction}
+                    -- if entity is assembler, set recipe
+                    if string.find(name, "assembler", 1, true) then
+                        entity.set_recipe(storage.minifactoryInfo[grid.unique_id][infoPosition.x][infoPosition.y].recipe)
+                    end
+                    -- if entity is inserter, set filter, filter mode, if filter enabled, stack size
+                    if string.find(name, "inserter", 1, true) then
+                        for i = 1, entity.filter_slot_count do
+                            entity.set_filter(i, storage.minifactoryInfo[grid.unique_id][infoPosition.x][infoPosition.y].filter[i])
+                        end
+                        entity.inserter_filter_mode = storage.minifactoryInfo[grid.unique_id][infoPosition.x][infoPosition.y].inserter_filter_mode
+                        entity.use_filters = storage.minifactoryInfo[grid.unique_id][infoPosition.x][infoPosition.y].use_filters
+                        entity.inserter_stack_size_override = storage.minifactoryInfo[grid.unique_id][infoPosition.x][infoPosition.y].inserter_stack_size_override
+                    end
                 else
                     surface.create_entity{name = name, position = {position.x, position.y}, force = player.force}
                 end
@@ -670,6 +701,12 @@ local function onChangeArmor(event)
     local surface = game.get_surface(getOrMakePlayerSurfaceName(playerIndex))
     -- there is no new armor grid
     if grid == nil then
+        if storage.playerGrids == nil then
+            storage.playerGrids = {}
+        end
+        if storage.playerGrids[playerIndex] == nil then
+            storage.playerGrids[playerIndex] = {}
+        end
         local lastGridUID = storage.playerGrids[playerIndex].unique_id
         clearAndPrepareSurface(surface, lastGridUID)
         clearPlayerBuffs(playerIndex)
