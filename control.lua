@@ -1,23 +1,21 @@
--- needed before release:
+-- todo
 -- TODO: make recipes only available after researching related technology
--- TODO: try profiling
 
 -- bugfixes/ minor features:
 -- TODO: add settings to change buffs given by items, how long they last, and buff strength
--- TODO: add factoripedia entry for how the minifactory equipment works, what buffs it can give, and what to produce and how much buff they give (say each one lasts 50 seconds), add that there can only be one endpoint chest,
+-- TODO: add tips entry for how the minifactory equipment works, what buffs it can give, and what to produce and how much buff they give (say each one lasts 50 seconds), add that there can only be one endpoint chest, one of each kind of spawner
 -- TODO: add update proofing to GUI, see https://github.com/ClaudeMetz/UntitledGuiGuide/wiki/Chapter-8:-Going-With-the-Times
 -- TODO: do pass over recipe ingredients and costs
 -- TODO: do pass over buff dict add more complex, and wider variety of, items
 -- TODO: make the mod work with space age/quality (quality equipment --> quality entities placed)
--- TODO: maybe make inventory slots bonus be the max of last 10 times buffs were updated in order to keep it from flickering the gui every 5s
--- TODO: make the buff items their own items as the end products of the minifactory
-
+-- TODO: maybe make the buff items their own items as the end products of the minifactory
 
 -- item name to buff name and buff amount
 BuffDict = {
     ["transport-belt"] = {"character_running_speed_modifier", 0.005},
     ["inserter"] = {"character_running_speed_modifier", 0.03},
-    ["long-handed-inserter"] = {"character_running_speed_modifier", 0.04},
+    ["long-handed-inserter"] = {"character_running_speed_modifier", 0.0375},
+    ["fast-inserter"] = {"character_running_speed_modifier", 0.05},
     ["assembling-machine-1"] = {"character_crafting_speed_modifier", 0.1},
     ["assembling-machine-2"] = {"character_crafting_speed_modifier", 0.2},
     ["steel-chest"] = {"character_inventory_slots_bonus", 5}
